@@ -39,6 +39,6 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000; // Use the internet port or 3000
-http.listen(PORT, () => {
-    console.log('Server is live!');
+http.listen(PORT, '0.0.0.0', () => {
+    console.log('Server is running on port ' + PORT);
 });
