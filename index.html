@@ -12,21 +12,21 @@
             background: #121212; display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 100;
         }
-        #login-screen input { padding: 15px; border-radius: 10px; border: none; width: 250px; margin-bottom: 10px; }
+        #login-screen input { padding: 15px; border-radius: 10px; border: none; width: 250px; margin-bottom: 10px; background: #333; color: white; }
         #login-screen button { padding: 10px 20px; border-radius: 10px; border: none; background: #007bff; color: white; cursor: pointer; }
 
-        /* CHAT SCREEN (Hidden until login) */
+        /* CHAT SCREEN */
         #chat-app { display: none; flex-direction: column; height: 100vh; }
         #header { background: #1f1f1f; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
         
         #messages { list-style-type: none; padding: 20px; margin: 0; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        #messages li { background: #2a2a2a; padding: 10px 15px; border-radius: 15px; width: fit-content; max-width: 80%; position: relative; }
+        #messages li { background: #2a2a2a; padding: 10px 15px; border-radius: 15px; width: fit-content; max-width: 80%; position: relative; word-wrap: break-word; }
         .time { font-size: 10px; color: #888; display: block; margin-top: 5px; text-align: right; }
-        #messages img { max-width: 100%; border-radius: 10px; margin-top: 5px; }
+        #messages img { max-width: 100%; border-radius: 10px; margin-top: 5px; display: block; }
 
-        #form { background: #1f1f1f; padding: 15px; display: flex; gap: 10px; border-top: 1px solid #333; }
+        #form { background: #1f1f1f; padding: 10px; display: flex; gap: 10px; border-top: 1px solid #333; align-items: center; }
         #input { background: #333; color: white; border: none; padding: 12px; flex-grow: 1; border-radius: 25px; outline: none; }
-        .icon-btn { background: none; border: none; font-size: 20px; cursor: pointer; }
+        .icon-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 5px; }
     </style>
 </head>
 <body>
@@ -40,7 +40,7 @@
     <div id="chat-app">
         <div id="header">
             <span id="display-name"></span>
-            <button id="clear" style="background:none; border:none; color:#ff4444; cursor:pointer;">🗑️ Clear Chat</button>
+            <button id="clear" style="background:none; border:none; color:#ff4444; cursor:pointer;">🗑️ Clear</button>
         </div>
 
         <ul id="messages"></ul>
@@ -49,23 +49,26 @@
             <input type="file" id="imageInput" accept="image/*" style="display:none">
             <button type="button" class="icon-btn" onclick="document.getElementById('imageInput').click()">📷</button>
             <input id="input" placeholder="Message..." autocomplete="off" />
-            <button type="submit" style="background:#007bff; color:white; border:none; border-radius:50%; width:40px; height:40px;">➔</button>
+            <button type="submit" style="background:#007bff; color:white; border:none; border-radius:50%; width:40px; height:40px; cursor:pointer;">➔</button>
         </form>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        var socket = io("https://my-chat-app-2dm4.onrender.com");
+        // FIXED FOR MOBILE: Auto-connect with fallback transports
+        var socket = io({
+            transports: ['polling', 'websocket']
+        });
+        
         var myName = "";
 
-        // Login Logic
         document.getElementById('login-btn').onclick = () => {
             var name = document.getElementById('username-input').value;
             if(name.trim() !== "") {
                 myName = name;
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('chat-app').style.display = 'flex';
-                document.getElementById('display-name').innerText = "Logged in as: " + myName;
+                document.getElementById('display-name').innerText = "User: " + myName;
             }
         };
 
@@ -83,14 +86,18 @@
             document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
         }
 
-        socket.on('load history', (h) => h.forEach(addMsg));
+        socket.on('load history', (h) => {
+            document.getElementById('messages').innerHTML = ''; // Clear UI before loading history
+            h.forEach(addMsg);
+        });
+        
         socket.on('chat message', addMsg);
         socket.on('clear chat', () => document.getElementById('messages').innerHTML = '');
 
         document.getElementById('form').onsubmit = (e) => {
             e.preventDefault();
             var input = document.getElementById('input');
-            if(input.value) {
+            if(input.value && myName) {
                 socket.emit('chat message', { user: myName, text: input.value });
                 input.value = '';
             }
@@ -98,13 +105,16 @@
 
         document.getElementById('imageInput').onchange = function() {
             var file = this.files[0];
+            if (!file) return;
             var reader = new FileReader();
-            reader.onload = (e) => socket.emit('chat message', { user: myName, image: e.target.result });
+            reader.onload = (e) => {
+                socket.emit('chat message', { user: myName, image: e.target.result });
+            };
             reader.readAsDataURL(file);
         };
 
         document.getElementById('clear').onclick = () => {
-            if(confirm("Delete all messages?")) socket.emit('clear chat');
+            if(confirm("Delete all messages for everyone?")) socket.emit('clear chat');
         };
     </script>
 </body>
