@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <input id="username" placeholder="Name..." />
+    <button id="clear">Clear All</button>
+    <ul id="messages" style="height: 300px; overflow-y: scroll; border: 1px solid #ccc;"></ul>
+    <form id="form">
+        <input id="input" autocomplete="off" /><button>Send</button>
+    </form>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        var socket = io();
+        var msgs = document.getElementById('messages');
+
+        function addMsg(data) {
+            var li = document.createElement('li');
+            li.innerHTML = `<b>${data.user}:</b> ${data.text}`;
+            msgs.appendChild(li);
+        }
+
+        socket.on('load history', (h) => h.forEach(addMsg));
+        socket.on('chat message', addMsg);
+        socket.on('clear chat', () => msgs.innerHTML = '');
+
+        document.getElementById('form').onsubmit = (e) => {
+            e.preventDefault();
+            var input = document.getElementById('input');
+            var user = document.getElementById('username');
+            if(input.value && user.value) {
+                socket.emit('chat message', { user: user.value, text: input.value });
+                input.value = '';
+            }
+        };
+
+        document.getElementById('clear').onclick = () => socket.emit('clear chat');
+    </script>
+</body>
+</html>
