@@ -13,16 +13,15 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 
 // 1. CONNECT TO MONGODB
-// This now looks for the 'MONGO_URL' you typed into the Render box
-const mongoURI = process.env.MONGO_URL;
-
-if (!mongoURI) {
-    console.error("ERROR: MONGO_URL is not set in Render Environment Variables!");
-}
+// This version uses the secret variable OR your direct link if the variable is missing
+const mongoURI = process.env.MONGO_URL || "mongodb+srv://admin:Nigeria@1@cluster0.ulx80ly.mongodb.net/?appName=Cluster0";
 
 mongoose.connect(mongoURI)
-    .then(() => console.log("Connected to MongoDB Atlas"))
-    .catch(err => console.error("Could not connect to MongoDB", err));
+    .then(() => console.log("✅ SUCCESS: Connected to MongoDB Atlas"))
+    .catch(err => {
+        console.error("❌ DATABASE ERROR: Could not connect.");
+        console.error(err);
+    });
 
 // 2. DATA SCHEMAS
 const User = mongoose.model('User', { 
@@ -41,31 +40,32 @@ const Message = mongoose.model('Message', {
 
 app.use(express.static(__dirname));
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-app.get('/admin', (req, res) => {
-    res.sendFile(path.join(__dirname, 'admin.html'));
-});
+// Routes
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 
 io.on('connection', (socket) => {
+    console.log('User connected: ' + socket.id);
+
     // LOGIN / REGISTER LOGIC
     socket.on('authenticate', async (data) => {
         try {
             let user = await User.findOne({ username: data.username });
             if (!user) {
+                // Register new user
                 const hashed = await bcrypt.hash(data.password, 10);
                 user = new User({ username: data.username, password: hashed });
                 await user.save();
                 socket.emit('auth-success', user.username);
             } else {
+                // Login existing user
                 const match = await bcrypt.compare(data.password, user.password);
                 if (match) socket.emit('auth-success', user.username);
                 else socket.emit('error-msg', 'Incorrect password');
             }
         } catch (e) {
-            socket.emit('error-msg', 'Auth Error');
+            console.error("Auth Error:", e);
+            socket.emit('error-msg', 'Auth Error: ' + e.message);
         }
     });
 
@@ -79,26 +79,30 @@ io.on('connection', (socket) => {
 
     // SEND PRIVATE MESSAGE
     socket.on('send-private-msg', async (data) => {
-        const roomID = [data.sender, data.receiver].sort().join('_');
-        const user = await User.findOne({ username: data.sender });
-        
-        const msgData = {
-            room: roomID,
-            sender: data.sender,
-            text: data.text,
-            badge: user ? user.badge : "", 
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
+        try {
+            const roomID = [data.sender, data.receiver].sort().join('_');
+            const user = await User.findOne({ username: data.sender });
+            
+            const msgData = {
+                room: roomID,
+                sender: data.sender,
+                text: data.text,
+                badge: user ? user.badge : "", 
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
 
-        const savedMsg = new Message(msgData);
-        await savedMsg.save();
-        io.to(roomID).emit('new-msg', msgData);
+            const savedMsg = new Message(msgData);
+            await savedMsg.save();
+            io.to(roomID).emit('new-msg', msgData);
+        } catch (err) {
+            console.error("Message send error:", err);
+        }
     });
 
-    // ADMIN ACTION (VERIFY USERS)
+    // ADMIN ACTION
     socket.on('admin-action', async (data) => {
-        // This looks for the 'ADMIN_SECRET' you typed into the Render box
-        if (data.adminKey !== process.env.ADMIN_SECRET) { 
+        const secret = process.env.ADMIN_SECRET || "mypassword123";
+        if (data.adminKey !== secret) { 
             return socket.emit('error-msg', 'Wrong Admin Key');
         }
         await User.findOneAndUpdate({ username: data.targetUser }, { badge: data.badge });
