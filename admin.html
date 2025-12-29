@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat Admin Panel</title>
+    <style>
+        body { font-family: sans-serif; background: #000; color: white; padding: 40px; text-align: center; }
+        .admin-card { background: #111; border: 1px solid #333; padding: 20px; border-radius: 15px; display: inline-block; width: 300px; }
+        input { width: 90%; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #444; background: #222; color: white; }
+        button { width: 95%; padding: 10px; background: #e0245e; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .status { margin-top: 15px; color: #1DA1F2; }
+    </style>
+</head>
+<body>
+
+    <div class="admin-card">
+        <h2>Admin Control</h2>
+        <p style="font-size: 12px; color: #888;">Enter the secret key and target user</p>
+        
+        <input id="adminKey" type="password" placeholder="Admin Secret Key">
+        <hr style="border: 0.5px solid #333; margin: 20px 0;">
+        
+        <input id="targetUser" placeholder="Target Username">
+        <input id="badgeEmoji" placeholder="Badge (e.g. 👑, ✔️, 🛠️)">
+        
+        <button onclick="updateUser()">Apply Badge</button>
+        <div id="status" class="status"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        function updateUser() {
+            const data = {
+                adminKey: document.getElementById('adminKey').value,
+                targetUser: document.getElementById('targetUser').value,
+                badge: document.getElementById('badgeEmoji').value
+            };
+
+            socket.emit('admin-action', data);
+        }
+
+        socket.on('admin-success', (msg) => {
+            document.getElementById('status').innerText = msg;
+            document.getElementById('status').style.color = "#00ff00";
+        });
+
+        socket.on('error-msg', (msg) => {
+            document.getElementById('status').innerText = msg;
+            document.getElementById('status').style.color = "#ff0000";
+        });
+    </script>
+</body>
+</html>
