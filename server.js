@@ -14,7 +14,7 @@ const path = require('path');
 
 // 1. CONNECT TO MONGODB
 // This version uses the secret variable OR your direct link if the variable is missing
-const mongoURI = process.env.MONGO_URL || "mongodb+srv://admin:Nigeria@1@cluster0.ulx80ly.mongodb.net/?appName=Cluster0";
+const mongoURI = process.env.MONGO_URL || "mongodb+srv://admin:kido jnr@cluster0.ulx80ly.mongodb.net/?appName=Cluster0";
 
 mongoose.connect(mongoURI)
     .then(() => console.log("✅ SUCCESS: Connected to MongoDB Atlas"))
@@ -114,3 +114,4 @@ const PORT = process.env.PORT || 3000;
 http.listen(PORT, '0.0.0.0', () => {
     console.log('Server is live on port ' + PORT);
 });
+
