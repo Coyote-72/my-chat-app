@@ -1,44 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Secure Cloud Chat</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudChat | Telegram Clone</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <style>
-        body { font-family: -apple-system, sans-serif; background: #000; color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        :root { --tg-blue: #24A1DE; --bg-dark: #1c1c1c; --sidebar-bg: #212121; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg-dark); color: white; margin: 0; overflow: hidden; }
         
-        /* Login Screen Styles */
-        #auth-screen { background: #111; position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .auth-box { background: #222; padding: 20px; border-radius: 15px; width: 80%; max-width: 300px; text-align: center; }
-        input { width: 90%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #333; background: #000; color: white; }
-        button { width: 100%; padding: 12px; background: #1DA1F2; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        /* Layout */
+        .app-container { display: flex; height: 100vh; }
+        .sidebar { width: 30%; background: var(--sidebar-bg); border-right: 1px solid #333; display: flex; flex-direction: column; }
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: #0e0e0e; }
 
-        /* Chat Styles */
-        #chat-screen { display: none; flex-direction: column; height: 100vh; }
-        #messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; }
-        .msg { margin-bottom: 12px; padding: 10px; border-radius: 10px; background: #222; max-width: 80%; align-self: flex-start; }
-        .my-msg { align-self: flex-end; background: #1DA1F2; }
-        .badge { margin-left: 5px; font-size: 14px; }
+        /* Sidebar Elements */
+        .search-container { padding: 15px; }
+        .search-input { width: 90%; padding: 10px; border-radius: 20px; border: none; background: #121212; color: white; }
+        .contact-list { flex: 1; overflow-y: auto; }
+        .contact-item { padding: 15px; cursor: pointer; border-bottom: 1px solid #2b2b2b; }
+        .contact-item:hover { background: #2b2b2b; }
+
+        /* Profile Pop-up */
+        #profile-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; align-items: center; justify-content: center; }
+        .modal-content { background: #222; padding: 25px; border-radius: 15px; width: 300px; text-align: center; }
+
+        /* Auth Screen */
+        #auth-screen { position: fixed; inset: 0; background: var(--bg-dark); z-index: 300; display: flex; align-items: center; justify-content: center; }
         
-        .input-area { padding: 15px; background: #111; display: flex; gap: 10px; }
-        #m-input { flex: 1; background: #222; border: none; padding: 10px; color: white; border-radius: 20px; }
+        .msg { padding: 10px; margin: 5px; border-radius: 12px; max-width: 70%; }
+        .my-msg { background: var(--tg-blue); align-self: flex-end; }
+        .other-msg { background: #2b2b2b; align-self: flex-start; }
     </style>
 </head>
 <body>
 
     <div id="auth-screen">
-        <div class="auth-box">
-            <h2>Welcome</h2>
-            <input id="username" placeholder="Username">
-            <input id="password" type="password" placeholder="Password">
-            <button onclick="login()">Enter Chat</button>
+        <div class="modal-content">
+            <h2 style="color: var(--tg-blue)">CloudChat</h2>
+            <input id="username" placeholder="Username" style="width:90%; padding:10px; margin:5px 0;">
+            <input id="password" type="password" placeholder="Password" style="width:90%; padding:10px; margin:5px 0;">
+            <button onclick="login()" style="width:95%; padding:10px; background:var(--tg-blue); color:white; border:none; border-radius:5px; margin-top:10px;">Sign In / Register</button>
         </div>
     </div>
 
-    <div id="chat-screen">
-        <div id="messages"></div>
-        <div class="input-area">
-            <input id="m-input" placeholder="Type a message..." autocomplete="off">
-            <button onclick="sendMsg()" style="width: auto; padding: 10px 20px;">Send</button>
+    <div id="profile-modal">
+        <div class="modal-content">
+            <h3>My Profile</h3>
+            <p id="my-assigned-number" style="color: var(--tg-blue); font-weight: bold;"></p>
+            <textarea id="bio-input" placeholder="Edit bio..." style="width:90%; background:#111; color:white; border:1px solid #444; padding:5px;"></textarea>
+            <button onclick="saveProfile()" style="margin-top:10px;">Save & Close</button>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="search-container">
+                <input class="search-input" id="search-query" placeholder="Search @user or +number..." onkeyup="if(event.key==='Enter') searchUser()">
+            </div>
+            <div class="contact-list" id="contacts">
+                </div>
+            <button onclick="document.getElementById('profile-modal').style.display='flex'" style="padding:15px; background:#333; color:white; border:none;">Settings</button>
+        </div>
+
+        <div class="chat-area" id="chat-window" style="display:none;">
+            <div id="chat-header" style="padding:15px; background:var(--sidebar-bg); font-weight:bold;">Talking to: <span id="chat-target-name">...</span></div>
+            <div id="messages" style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column;"></div>
+            <div style="padding:20px; display:flex; gap:10px;">
+                <input id="m-input" placeholder="Write a message..." style="flex:1; padding:12px; border-radius:25px; border:none; background:#222; color:white;">
+                <button onclick="sendMsg()" style="background:var(--tg-blue); border:none; color:white; padding:10px 20px; border-radius:25px;">Send</button>
+            </div>
         </div>
     </div>
 
@@ -46,63 +75,72 @@
     <script>
         const socket = io();
         let myName = "";
+        let currentChat = "";
 
-        // 1. LOGIN LOGIC
         function login() {
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
-            if(user && pass) {
-                socket.emit('authenticate', { username: user, password: pass });
-            }
+            if(user && pass) socket.emit('authenticate', { username: user, password: pass });
         }
 
-        socket.on('auth-success', (username) => {
-            myName = username;
+        socket.on('auth-success', (data) => {
+            myName = data.username;
+            document.getElementById('my-assigned-number').innerText = data.phone;
             document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('chat-screen').style.display = 'flex';
-            // Join a global room or private room. For now, let's use global.
-            socket.emit('join-private', { me: myName, other: 'Global' }); 
         });
 
-        socket.on('error-msg', (msg) => alert(msg));
+        function searchUser() {
+            const query = document.getElementById('search-query').value;
+            socket.emit('find-user', query);
+        }
 
-        // 2. MESSAGE LOGIC
+        socket.on('user-found', (user) => {
+            const list = document.getElementById('contacts');
+            const div = document.createElement('div');
+            div.className = 'contact-item';
+            div.innerHTML = `<strong>${user.username}</strong><br><small>${user.phone}</small>`;
+            div.onclick = () => startChat(user.username);
+            list.appendChild(div);
+        });
+
+        function startChat(target) {
+            currentChat = target;
+            document.getElementById('chat-window').style.display = 'flex';
+            document.getElementById('chat-target-name').innerText = target;
+            socket.emit('join-private', { me: myName, other: target });
+        }
+
         function sendMsg() {
             const txt = document.getElementById('m-input').value;
-            if(txt) {
-                socket.emit('send-private-msg', {
-                    sender: myName,
-                    receiver: 'Global',
-                    text: txt
-                });
+            if(txt && currentChat) {
+                socket.emit('send-private-msg', { sender: myName, receiver: currentChat, text: txt });
                 document.getElementById('m-input').value = "";
             }
         }
 
         socket.on('new-msg', (data) => {
-            displayMsg(data);
+            const div = document.createElement('div');
+            div.className = `msg ${data.sender === myName ? 'my-msg' : 'other-msg'}`;
+            div.innerText = data.text;
+            document.getElementById('messages').appendChild(div);
+            document.getElementById('messages').scrollTop = 99999;
         });
 
         socket.on('load-history', (history) => {
             document.getElementById('messages').innerHTML = "";
-            history.forEach(displayMsg);
+            history.forEach(msg => {
+                const div = document.createElement('div');
+                div.className = `msg ${msg.sender === myName ? 'my-msg' : 'other-msg'}`;
+                div.innerText = msg.text;
+                document.getElementById('messages').appendChild(div);
+            });
+            document.getElementById('messages').scrollTop = 99999;
         });
 
-        function displayMsg(data) {
-            const div = document.createElement('div');
-            const isMe = data.sender === myName;
-            div.className = `msg ${isMe ? 'my-msg' : ''}`;
-            
-            // Show the Badge (like the checkmark from Admin)
-            const badgeHtml = data.badge ? `<span class="badge">${data.badge}</span>` : "";
-
-            div.innerHTML = `
-                <div style="font-size: 12px; opacity: 0.7;">${data.sender}${badgeHtml}</div>
-                <div>${data.text}</div>
-                <div style="font-size: 10px; text-align: right; margin-top: 5px;">${data.time}</div>
-            `;
-            document.getElementById('messages').appendChild(div);
-            document.getElementById('messages').scrollTop = 99999;
+        function saveProfile() {
+            const bio = document.getElementById('bio-input').value;
+            socket.emit('update-profile', { username: myName, bio: bio });
+            document.getElementById('profile-modal').style.display = 'none';
         }
     </script>
 </body>
