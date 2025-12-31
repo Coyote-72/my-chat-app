@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>CloudChat | Connect Securely</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root { --tg-blue: #24A1DE; --bg-dark: #0f172a; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg-dark); color: white; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        
+        /* Animated Background */
+        .bg-gradient { position: fixed; inset: 0; background: linear-gradient(45deg, #0f172a 0%, #1e293b 100%); z-index: -1; }
+        .blob { position: absolute; width: 300px; height: 300px; background: var(--tg-blue); filter: blur(80px); opacity: 0.2; border-radius: 50%; animation: move 10s infinite alternate; }
+
+        .auth-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); padding: 40px; border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.1); width: 100%; max-width: 400px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+        
+        h1 { font-size: 2.5rem; margin-bottom: 10px; background: linear-gradient(to right, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        p { color: #94a3b8; margin-bottom: 30px; }
+
+        .input-group { margin-bottom: 20px; text-align: left; }
+        label { display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 5px; margin-left: 5px; }
+        input { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #334155; background: #1e293b; color: white; box-sizing: border-box; outline: none; transition: 0.3s; }
+        input:focus { border-color: var(--tg-blue); box-shadow: 0 0 0 4px rgba(36, 161, 222, 0.2); }
+
+        .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; background: var(--tg-blue); color: white; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 1rem; }
+        .btn:hover { background: #1c82b5; transform: translateY(-2px); }
+
+        .links { margin-top: 20px; font-size: 0.9rem; }
+        .links a { color: var(--tg-blue); text-decoration: none; cursor: pointer; }
+        
+        @keyframes move { from { transform: translate(-10%, -10%); } to { transform: translate(20%, 20%); } }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"><div class="blob"></div></div>
+
+    <div class="auth-card" id="main-box">
+        <h1>CloudChat</h1>
+        <p id="tagline">The world's fastest messaging app.</p>
+
+        <div id="auth-form">
+            <div class="input-group">
+                <label>Username</label>
+                <input type="text" id="username" placeholder="Choose a unique name">
+            </div>
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="••••••••">
+            </div>
+            
+            <button class="btn" onclick="submitAuth()" id="submit-btn">Continue</button>
+            
+            <div class="links">
+                <a onclick="toggleMode()" id="toggle-link">New here? Create an account</a><br><br>
+                <a onclick="forgotPassword()" style="opacity: 0.6;">Forgot password?</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let isLogin = true;
+
+        function toggleMode() {
+            isLogin = !isLogin;
+            document.getElementById('submit-btn').innerText = isLogin ? "Continue" : "Register Now";
+            document.getElementById('toggle-link').innerText = isLogin ? "New here? Create an account" : "Already have an account? Log in";
+            document.getElementById('tagline').innerText = isLogin ? "The world's fastest messaging app." : "Join millions around the globe.";
+        }
+
+        function submitAuth() {
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            if(!u || !p) return alert("Please fill all fields");
+            
+            // Redirect to index.html with credentials (we'll use localStorage for this)
+            localStorage.setItem('pendingUser', u);
+            localStorage.setItem('pendingPass', p);
+            window.location.href = "/"; 
+        }
+
+        function forgotPassword() {
+            alert("For security, password reset codes are sent to your verified App Number. Contact Support if you lost access.");
+        }
+    </script>
+</body>
+</html>
