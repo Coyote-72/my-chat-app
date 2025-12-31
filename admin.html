@@ -1,28 +1,98 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Chat Admin Panel</title>
+    <title>CloudChat | Admin Control</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: sans-serif; background: #000; color: white; padding: 40px; text-align: center; }
-        .admin-card { background: #111; border: 1px solid #333; padding: 20px; border-radius: 15px; display: inline-block; width: 300px; }
-        input { width: 90%; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #444; background: #222; color: white; }
-        button { width: 95%; padding: 10px; background: #e0245e; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .status { margin-top: 15px; color: #1DA1F2; }
+        :root { --tg-blue: #24A1DE; --bg-dark: #0f172a; --card-bg: #1e293b; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: var(--bg-dark); 
+            color: white; 
+            margin: 0; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+        }
+        .admin-card { 
+            background: var(--card-bg); 
+            padding: 30px; 
+            border-radius: 20px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
+            width: 100%; 
+            max-width: 350px; 
+            text-align: center;
+            border: 1px solid #334155;
+        }
+        h2 { margin-bottom: 5px; color: var(--tg-blue); }
+        p { font-size: 0.85rem; color: #94a3b8; margin-bottom: 20px; }
+        
+        input { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 8px 0; 
+            border-radius: 10px; 
+            border: 1px solid #334155; 
+            background: #0f172a; 
+            color: white; 
+            box-sizing: border-box; 
+            outline: none;
+            transition: 0.3s;
+        }
+        input:focus { border-color: var(--tg-blue); }
+        
+        .preview-box {
+            background: #0f172a;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-size: 0.9rem;
+            border: 1px dashed #475569;
+        }
+
+        button { 
+            width: 100%; 
+            padding: 12px; 
+            background: var(--tg-blue); 
+            color: white; 
+            border: none; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            margin-top: 10px;
+            transition: 0.2s;
+        }
+        button:hover { background: #34b1ee; }
+        button.secondary { background: #475569; margin-top: 5px; }
+
+        .status { 
+            margin-top: 20px; 
+            font-size: 0.9rem; 
+            font-weight: bold; 
+            min-height: 1.2em; 
+        }
     </style>
 </head>
 <body>
 
     <div class="admin-card">
-        <h2>Admin Control</h2>
-        <p style="font-size: 12px; color: #888;">Enter the secret key and target user</p>
+        <h2>Admin Panel</h2>
+        <p>Assign verification badges & roles</p>
         
         <input id="adminKey" type="password" placeholder="Admin Secret Key">
-        <hr style="border: 0.5px solid #333; margin: 20px 0;">
+        <hr style="border: 0; border-top: 1px solid #334155; margin: 20px 0;">
         
-        <input id="targetUser" placeholder="Target Username">
-        <input id="badgeEmoji" placeholder="Badge (e.g. 👑, ✔️, 🛠️)">
+        <input id="targetUser" placeholder="Username (e.g. JohnDoe)" oninput="updatePreview()">
+        <input id="badgeEmoji" placeholder="Badge (👑, ✔️, 🛠️, 🛡️)" oninput="updatePreview()">
+        
+        <div class="preview-box">
+            Preview: <span id="p-name" style="color: #f59e0b; font-weight: bold;">User</span> <span id="p-badge"></span>
+        </div>
         
         <button onclick="updateUser()">Apply Badge</button>
+        <button class="secondary" onclick="clearForm()">Clear Fields</button>
+        
         <div id="status" class="status"></div>
     </div>
 
@@ -30,24 +100,49 @@
     <script>
         const socket = io();
 
+        function updatePreview() {
+            const user = document.getElementById('targetUser').value;
+            const badge = document.getElementById('badgeEmoji').value;
+            document.getElementById('p-name').innerText = user || "User";
+            document.getElementById('p-badge').innerText = badge;
+        }
+
         function updateUser() {
+            const status = document.getElementById('status');
             const data = {
                 adminKey: document.getElementById('adminKey').value,
                 targetUser: document.getElementById('targetUser').value,
                 badge: document.getElementById('badgeEmoji').value
             };
 
+            if(!data.adminKey || !data.targetUser) {
+                status.innerText = "Missing key or username";
+                status.style.color = "#ef4444";
+                return;
+            }
+
+            status.innerText = "Processing...";
+            status.style.color = "#94a3b8";
             socket.emit('admin-action', data);
         }
 
+        function clearForm() {
+            document.getElementById('targetUser').value = "";
+            document.getElementById('badgeEmoji').value = "";
+            updatePreview();
+            document.getElementById('status').innerText = "";
+        }
+
         socket.on('admin-success', (msg) => {
-            document.getElementById('status').innerText = msg;
-            document.getElementById('status').style.color = "#00ff00";
+            const status = document.getElementById('status');
+            status.innerText = "✅ " + msg;
+            status.style.color = "#22c55e";
         });
 
         socket.on('error-msg', (msg) => {
-            document.getElementById('status').innerText = msg;
-            document.getElementById('status').style.color = "#ff0000";
+            const status = document.getElementById('status');
+            status.innerText = "❌ " + msg;
+            status.style.color = "#ef4444";
         });
     </script>
 </body>
