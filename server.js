@@ -10,7 +10,7 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 
 // 1. DATABASE CONNECTION
-const mongoURI = process.env.MONGO_URL || "mongodb+srv://admin:Nigeria@1@cluster0.ulx80ly.mongodb.net/?appName=Cluster0";
+const mongoURI = process.env.MONGO_URL || "mongodb+srv://admin:KIDO_KING@cluster0.ulx80ly.mongodb.net/?appName=Cluster0";
 mongoose.connect(mongoURI)
     .then(() => console.log("✅ Database Connected"))
     .catch(err => console.log("❌ DB Error:", err));
@@ -27,7 +27,6 @@ const User = mongoose.model('User', {
     isOnline: { type: Boolean, default: false }
 });
 
-// NEW: Group Schema
 const Group = mongoose.model('Group', {
     name: String,
     creator: String,
@@ -40,7 +39,8 @@ const Message = mongoose.model('Message', {
     sender: String, 
     text: String, 
     time: String,
-    isGroup: { type: Boolean, default: false }, // To distinguish msg types
+    badge: { type: String, default: "" }, // Added badge to message history
+    isGroup: { type: Boolean, default: false },
     timestamp: { type: Date, default: Date.now }
 });
 
@@ -83,14 +83,13 @@ io.on('connection', (socket) => {
 
             currentConnectedUser = user.username;
             
-            // Find all groups this user belongs to
             const userGroups = await Group.find({ members: user.username });
 
             socket.emit('auth-success', { 
                 username: user.username, 
                 phone: user.appPhone,
                 contacts: user.contacts,
-                groups: userGroups, // Send groups to frontend
+                groups: userGroups,
                 bio: user.bio,
                 badge: user.badge
             });
@@ -110,8 +109,28 @@ io.on('connection', (socket) => {
         }
     });
 
+    // --- ADMIN ACTION LOGIC ---
+    socket.on('admin-action', async (data) => {
+        const ADMIN_SECRET = "KIDO_KING"; // Change this for security!
+        if (data.adminKey !== ADMIN_SECRET) return socket.emit('error-msg', 'Invalid Admin Key');
+
+        try {
+            const user = await User.findOneAndUpdate(
+                { username: data.targetUser },
+                { badge: data.badge },
+                { new: true }
+            );
+            if (user) {
+                socket.emit('admin-success', `Badge ${data.badge} applied to ${data.targetUser}`);
+            } else {
+                socket.emit('error-msg', 'User not found');
+            }
+        } catch (e) {
+            socket.emit('error-msg', 'Admin operation failed');
+        }
+    });
+
     // --- GROUP LOGIC ---
-    
     socket.on('create-group', async (data) => {
         try {
             const newGroup = new Group({
@@ -120,15 +139,8 @@ io.on('connection', (socket) => {
                 members: [data.me, ...data.initialMembers]
             });
             await newGroup.save();
-            
-            // Auto-join the creator to the new socket room
             socket.join(newGroup._id.toString());
-            
-            // Tell the creator the group is ready
             socket.emit('group-created', newGroup);
-            
-            // Log for admin
-            console.log(`🏠 Group Created: ${data.groupName} by ${data.me}`);
         } catch (e) {
             socket.emit('error-msg', 'Failed to create group');
         }
@@ -141,11 +153,14 @@ io.on('connection', (socket) => {
     });
 
     socket.on('send-group-msg', async (data) => {
+        // Fetch the sender's current badge
+        const user = await User.findOne({ username: data.sender });
         const msgData = {
             room: data.groupId,
             sender: data.sender,
             text: data.text,
             isGroup: true,
+            badge: user ? user.badge : "", 
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         await new Message(msgData).save();
@@ -153,7 +168,6 @@ io.on('connection', (socket) => {
     });
 
     // --- PRIVATE CHAT LOGIC ---
-
     socket.on('find-user', async (query) => {
         const target = await User.findOne({ $or: [{ username: query }, { appPhone: query }] });
         if (target) {
@@ -176,8 +190,10 @@ io.on('connection', (socket) => {
     socket.on('send-private-msg', async (data) => {
         if (!data.text.trim()) return;
         const roomID = [data.sender, data.receiver].sort().join('_');
+        const user = await User.findOne({ username: data.sender });
         const msgData = {
             room: roomID, sender: data.sender, text: data.text,
+            badge: user ? user.badge : "",
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         await new Message(msgData).save();
